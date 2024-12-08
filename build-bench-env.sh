@@ -307,12 +307,9 @@ readonly devdir="$curdir/extern"
 
 function phase {
   cd "$curdir"
-  echo
-  echo
-  echo "--------------------------------------------"
+  echo "********************************************************************************"
   echo "$1"
-  echo "--------------------------------------------"
-  echo
+  echo "********************************************************************************"
 }
 
 function write_version {  # name, git-tag, repo
@@ -370,52 +367,24 @@ function check_checksum {  # name, sha256sum
 }
 
 function aptinstall {
-  echo ""
-  echo "> $SUDO apt install $1"
-  echo ""
-  $SUDO apt install --no-install-recommends $1
-}
-
-function dnfinstall {
-  echo ""
-  echo "> $SUDO dnf -y --quiet --nodocs install $1"
-  echo ""
-  $SUDO dnf -y --quiet --nodocs install $1
-}
-
-function apkinstall {
-  echo ""
-  echo "> apk add -q $1"
-  echo ""
-  apk add -q $1
-}
-
-function brewinstall {
-  echo ""
-  echo "> brew install $1"
-  echo ""
-  brew install $1
+  echo ">>> $SUDO apt install $1"
+  $SUDO apt-get install --no-install-recommends $1
 }
 
 function aptinstallbazel {
-  echo ""
-  echo "> installing bazel"
-  echo ""
-  aptinstall apt-transport-https curl gnupg
+  if ! command -v bazel; then
+    echo ""
+    echo "error: bazel not installed. Please install it manually."
+    exit 1
+  fi
+
+  echo ">>> installing bazel"
+  aptinstall "apt-transport-https curl gnupg"
   curl -fsSL https://bazel.build/bazel-release.pub.gpg | gpg --dearmor > bazel.gpg
   $SUDO mv bazel.gpg /etc/apt/trusted.gpg.d/bazel.gpg
   echo "deb [arch=amd64] https://storage.googleapis.com/bazel-apt stable jdk1.8" | $SUDO tee /etc/apt/sources.list.d/bazel.list
   $SUDO apt update -qq
   aptinstall bazel
-}
-
-function dnfinstallbazel {
-  echo ""
-  echo "> installing bazel"
-  echo ""
-  dnfinstall dnf-plugins-core
-  $SUDO dnf copr -y enable vbatts/bazel
-  dnfinstall bazel4
 }
 
 if test "$all" = "1"; then
@@ -425,36 +394,6 @@ if test "$all" = "1"; then
     cd ..
     rm -rf "extern/*"
     popd
-  fi
-fi
-
-
-if test "$setup_packages" = "1"; then
-  phase "install packages"
-  if grep -q 'ID=fedora' /etc/os-release 2>/dev/null; then
-    # no 'apt update' equivalent needed on Fedora
-    dnfinstall "gcc-c++ clang lld llvm-devel unzip dos2unix bc gmp-devel wget gawk \
-      cmake python3 ruby ninja-build libtool autoconf git patch time sed \
-      ghostscript libatomic which gflags-devel xz readline-devel snappy-devel"
-    dnfinstallbazel
-  elif grep -q -e 'ID=debian' -e 'ID=ubuntu' /etc/os-release 2>/dev/null; then
-    echo "updating package database... ($SUDO apt update)"
-    $SUDO apt update -qq
-    aptinstall "g++ clang lld llvm-dev unzip dos2unix linuxinfo bc libgmp-dev wget \
-      cmake python3 ruby ninja-build libtool autoconf sed ghostscript time \
-      curl automake libatomic1 libgflags-dev libsnappy-dev zlib1g-dev libbz2-dev \
-      liblz4-dev libzstd-dev libreadline-dev pkg-config gawk util-linux"
-    aptinstallbazel
-  elif grep -q -e 'ID=alpine' /etc/os-release 2>/dev/null; then
-    echo "@testing http://nl.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
-    apk update
-    apkinstall "clang lld unzip dos2unix bc gmp-dev wget cmake python3 automake gawk \
-      samurai libtool git build-base linux-headers autoconf util-linux sed \
-      ghostscript libatomic gflags-dev readline-dev snappy-dev"
-    apkinstall "bazel@testing"
-  elif brew --version 2> /dev/null >/dev/null; then
-    brewinstall "dos2unix wget cmake ninja automake libtool gnu-time gmp mpir gnu-sed \
-      ghostscript bazelisk gflags snappy"
   fi
 fi
 
