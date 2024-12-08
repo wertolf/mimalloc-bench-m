@@ -342,15 +342,19 @@ function partial_checkout {  # name, git-tag, git repo, directory to download
 
 function checkout {  # name, git-tag, git repo, options
   phase "build $1: version $2"
+
   pushd $devdir
+
   if test "$rebuild" = "1"; then
     rm -rf "$1"
   fi
+
   if test -d "$1"; then
     echo "$devdir/$1 already exists; no need to git clone"
   else
     git clone $4 $3 $1
   fi
+
   cd "$1"
   git checkout $2
   write_version $1 $2 $3
@@ -371,13 +375,15 @@ function aptinstall {
   $SUDO apt-get install --no-install-recommends $1
 }
 
-function aptinstallbazel {
+function check_bazel {
   if ! command -v bazel; then
     echo ""
     echo "error: bazel not installed. Please install it manually."
     exit 1
   fi
+}
 
+function aptinstallbazel {
   echo ">>> installing bazel"
   aptinstall "apt-transport-https curl gnupg"
   curl -fsSL https://bazel.build/bazel-release.pub.gpg | gpg --dearmor > bazel.gpg
@@ -546,6 +552,8 @@ if test "$setup_tcg" = "1"; then
   gawk -i inplace '(f && g) {$0="linkshared = True, )"; f=0; g=0} /This library provides tcmalloc always/{f=1} /alwayslink/{g=1} 1' tcmalloc/BUILD
   gawk -i inplace 'f{$0="cc_binary("; f=0} /This library provides tcmalloc always/{f=1} 1' tcmalloc/BUILD # Change the line after "This library…" to cc_binary (instead of cc_library)
   gawk -i inplace '/alwayslink/ && !f{f=1; next} 1' tcmalloc/BUILD # delete only the first instance of "alwayslink"
+
+  check_bazel
   bazel build -c opt tcmalloc
   popd
 fi
